@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バックエンド動作確認</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        .endpoint {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .endpoint h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        .method {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .url {
+            font-family: monospace;
+            background-color: #e9ecef;
+            padding: 5px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .response {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .error {
+            border-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .loading {
+            border-color: #ffc107;
+            background-color: #fff3cd;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.online {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.offline {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>バックエンド動作確認ツール</h1>
+        
+        <div class="endpoint">
+            <h3><span class="method">GET</span>サーバー状態確認</h3>
+            <div class="url">http://127.0.0.1:8000/health</div>
+            <button onclick="checkHealth()">ヘルスチェック</button>
+            <div id="healthResponse" class="response"></div>
+        </div>
+
+        <h2>ダウンロード機能</h2>
+        
+        <div class="endpoint">
+            <h3><span class="method">POST</span>データダウンロード</h3>
+            <div class="url">http://127.0.0.1:8000/download</div>
+            <div class="form-group">
+                <label>シンボル:</label>
+                <input type="text" id="downloadSymbol" value="AAPL" placeholder="例: AAPL, MSFT, GOOGL">
+            </div>
+            <div class="form-group">
+                <label>プロバイダー:</label>
+                <select id="downloadProvider">
+                    <option value="yahoo">Yahoo Finance</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>期間:</label>
+                <select id="downloadInterval">
+                    <option value="1d">1日</option>
+                    <option value="1wk">1週間</option>
+                    <option value="1mo">1ヶ月</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>開始日:</label>
+                <input type="date" id="downloadStartDate" value="2023-01-01">
+            </div>
+            <div class="form-group">
+                <label>終了日:</label>
+                <input type="date" id="downloadEndDate" value="2024-01-01">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-item">
+                    <input type="checkbox" id="downloadPrepost">
+                    プレポストデータを含む
+                </label>
+            </div>
+            <button onclick="downloadData()">ダウンロード実行</button>
+            <div id="downloadResponse" class="response"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method">GET</span>利用可能ファイル一覧</h3>
+            <div class="url">http://127.0.0.1:8000/download/available-files</div>
+            <button onclick="getAvailableFiles()">ファイル一覧取得</button>
+            <div id="filesResponse" class="response"></div>
+        </div>
+
+        <h2>チャート機能</h2>
+        
+        <div class="endpoint">
+            <h3><span class="method">GET</span>HTMLチャート</h3>
+            <div class="url">http://127.0.0.1:8000/chart/html/{filename}</div>
+            <div class="form-group">
+                <label>ファイル名:</label>
+                <input type="text" id="chartFilename" value="AAPL.csv" placeholder="例: AAPL.csv">
+            </div>
+            <div class="form-group">
+                <label>テクニカル指標:</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showBb">
+                        <label for="showBb">ボリンジャーバンド</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showRsi">
+                        <label for="showRsi">RSI</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showMacd">
+                        <label for="showMacd">MACD</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="showVwap">
+                        <label for="showVwap">VWAP</label>
+                    </div>
+                </div>
+            </div>
+            <button onclick="getHtmlChart()">HTMLチャート取得</button>
+            <div id="htmlChartResponse" class="response"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method">GET</span>JSONチャート</h3>
+            <div class="url">http://127.0.0.1:8000/chart/json/{filename}</div>
+            <button onclick="getJsonChart()">JSONチャート取得</button>
+            <div id="jsonChartResponse" class="response"></div>
+        </div>
+
+        <h2>分析機能</h2>
+        
+        <div class="endpoint">
+            <h3><span class="method">POST</span>統計サマリー分析</h3>
+            <div class="url">http://127.0.0.1:8000/analysis/summary</div>
+            <div class="form-group">
+                <label>ティッカー（カンマ区切り）:</label>
+                <input type="text" id="analysisTickers" value="AAPL,MSFT,GOOGL" placeholder="例: AAPL,MSFT,GOOGL">
+            </div>
+            <div class="form-group">
+                <label>無リスク利率:</label>
+                <input type="number" id="riskFreeRate" value="0.0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>年間取引日数:</label>
+                <input type="number" id="periodsPerYear" value="252">
+            </div>
+            <div class="form-group">
+                <label>リターン計算方法:</label>
+                <select id="returnMethod">
+                    <option value="simple">単純リターン</option>
+                    <option value="log">対数リターン</option>
+                </select>
+            </div>
+            <button onclick="runSummaryAnalysis()">統計サマリー実行</button>
+            <div id="summaryResponse" class="response"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method">POST</span>相関分析</h3>
+            <div class="url">http://127.0.0.1:8000/analysis/correlation</div>
+            <button onclick="runCorrelationAnalysis()">相関分析実行</button>
+            <div id="correlationResponse" class="response"></div>
+        </div>
+
+        <h2>ポートフォリオ機能</h2>
+        
+        <div class="endpoint">
+            <h3><span class="method">POST</span>ポートフォリオ最適化</h3>
+            <div class="url">http://127.0.0.1:8000/portfolio/optimization</div>
+            <button onclick="runPortfolioOptimization()">ポートフォリオ最適化実行</button>
+            <div id="portfolioResponse" class="response"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3><span class="method">POST</span>効率的フロンティア</h3>
+            <div class="url">http://127.0.0.1:8000/portfolio/efficient-frontier</div>
+            <button onclick="runEfficientFrontier()">効率的フロンティア実行</button>
+            <div id="frontierResponse" class="response"></div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://127.0.0.1:8000';
+
+        // ヘルスチェック
+        async function checkHealth() {
+            const responseDiv = document.getElementById('healthResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = 'チェック中...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/health`);
+                const data = await response.text();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `ステータス: ${response.status}\nレスポンス: ${data}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${response.status} ${response.statusText}\n${data}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // データダウンロード
+        async function downloadData() {
+            const responseDiv = document.getElementById('downloadResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = 'ダウンロード中...';
+
+            const params = {
+                symbol: document.getElementById('downloadSymbol').value,
+                provider: document.getElementById('downloadProvider').value,
+                interval: document.getElementById('downloadInterval').value,
+                start_date: document.getElementById('downloadStartDate').value,
+                end_date: document.getElementById('downloadEndDate').value,
+                prepost: document.getElementById('downloadPrepost').checked
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/download`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // 利用可能ファイル一覧取得
+        async function getAvailableFiles() {
+            const responseDiv = document.getElementById('filesResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '取得中...';
+
+            try {
+                const response = await fetch(`${BASE_URL}/download/available-files`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // HTMLチャート取得
+        async function getHtmlChart() {
+            const responseDiv = document.getElementById('htmlChartResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '取得中...';
+
+            const filename = document.getElementById('chartFilename').value;
+            const params = new URLSearchParams({
+                show_bb: document.getElementById('showBb').checked,
+                show_rsi: document.getElementById('showRsi').checked,
+                show_macd: document.getElementById('showMacd').checked,
+                show_vwap: document.getElementById('showVwap').checked
+            });
+
+            try {
+                const response = await fetch(`${BASE_URL}/chart/html/${filename}?${params}`);
+                const data = await response.text();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: HTMLチャート取得\n\n${data.substring(0, 500)}...`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${response.status} ${response.statusText}\n${data}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // JSONチャート取得
+        async function getJsonChart() {
+            const responseDiv = document.getElementById('jsonChartResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '取得中...';
+
+            const filename = document.getElementById('chartFilename').value;
+
+            try {
+                const response = await fetch(`${BASE_URL}/chart/json/${filename}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // 統計サマリー分析
+        async function runSummaryAnalysis() {
+            const responseDiv = document.getElementById('summaryResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '分析中...';
+
+            const params = {
+                tickers: document.getElementById('analysisTickers').value.split(',').map(t => t.trim()),
+                risk_free_rate: parseFloat(document.getElementById('riskFreeRate').value),
+                periods_per_year: parseInt(document.getElementById('periodsPerYear').value),
+                method: document.getElementById('returnMethod').value
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/analysis/summary`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // 相関分析
+        async function runCorrelationAnalysis() {
+            const responseDiv = document.getElementById('correlationResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '分析中...';
+
+            const params = {
+                tickers: document.getElementById('analysisTickers').value.split(',').map(t => t.trim()),
+                method: document.getElementById('returnMethod').value,
+                correlation_threshold: 0.9,
+                consolidation_method: 'mean'
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/analysis/correlation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // ポートフォリオ最適化
+        async function runPortfolioOptimization() {
+            const responseDiv = document.getElementById('portfolioResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '最適化中...';
+
+            const params = {
+                tickers: document.getElementById('analysisTickers').value.split(',').map(t => t.trim()),
+                risk_free_rate: parseFloat(document.getElementById('riskFreeRate').value),
+                periods_per_year: parseInt(document.getElementById('periodsPerYear').value),
+                method: document.getElementById('returnMethod').value,
+                optimization_method: 'sharpe',
+                target_return: null,
+                target_risk: null,
+                risk_tolerance: 1.0,
+                max_weight: 1.0,
+                min_weight: 0.0
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/portfolio/optimization`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // 効率的フロンティア
+        async function runEfficientFrontier() {
+            const responseDiv = document.getElementById('frontierResponse');
+            responseDiv.className = 'response loading';
+            responseDiv.textContent = '計算中...';
+
+            const params = {
+                tickers: document.getElementById('analysisTickers').value.split(',').map(t => t.trim()),
+                risk_free_rate: parseFloat(document.getElementById('riskFreeRate').value),
+                periods_per_year: parseInt(document.getElementById('periodsPerYear').value),
+                method: document.getElementById('returnMethod').value,
+                optimization_method: 'sharpe',
+                target_return: null,
+                target_risk: null,
+                risk_tolerance: 1.0,
+                max_weight: 1.0,
+                min_weight: 0.0
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/portfolio/efficient-frontier`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    responseDiv.className = 'response success';
+                    responseDiv.textContent = `成功: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    responseDiv.className = 'response error';
+                    responseDiv.textContent = `エラー: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                responseDiv.className = 'response error';
+                responseDiv.textContent = `ネットワークエラー: ${error.message}`;
+            }
+        }
+
+        // ページ読み込み時にヘルスチェックを実行
+        window.onload = function() {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>
