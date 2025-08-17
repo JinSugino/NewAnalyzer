@@ -1,13 +1,187 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, Body
+from typing import List, Optional, Dict, Any
 import json
 from fastapi.responses import HTMLResponse
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 
 from services.analysis_service import AnalysisService
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 svc = AnalysisService()
+
+# Pydanticモデル
+class AnalysisRequest(BaseModel):
+    tickers: Optional[List[str]] = None
+    risk_free_rate: float = 0.0
+    periods_per_year: int = 252
+    method: str = "simple"
+
+class CorrelationRequest(BaseModel):
+    tickers: Optional[List[str]] = None
+    method: str = "simple"
+    correlation_threshold: float = 0.9
+    consolidation_method: str = "mean"
+
+@router.post("/summary")
+async def post_summary(request: AnalysisRequest):
+    """統計サマリー分析（POST）"""
+    try:
+        result = svc.get_summary(request.tickers, risk_free_rate=request.risk_free_rate, periods_per_year=request.periods_per_year, method=request.method)
+        table_safe = json.loads(json.dumps(result["table"], default=str))
+        return jsonable_encoder({"summary": result["summary"], "table": table_safe})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/summary/html", response_class=HTMLResponse)
+async def post_summary_html(request: AnalysisRequest):
+    """統計サマリー分析HTML（POST）"""
+    result = svc.get_summary(request.tickers, risk_free_rate=request.risk_free_rate, periods_per_year=request.periods_per_year, method=request.method)
+    fig_json = json.dumps(result["table"], default=str)
+    html = f"""
+    <!doctype html>
+    <html lang=\"ja\">
+      <head>
+        <meta charset=\"utf-8\" />
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+        <title>統計量サマリ</title>
+        <script src=\"https://cdn.plot.ly/plotly-2.30.0.min.js\"></script>
+        <style>html, body {{ height: 100%; margin: 0; }} #chart {{ width: 100%; height: 100vh; }}</style>
+      </head>
+      <body>
+        <div id=\"chart\"></div>
+        <script>
+          const fig = {fig_json};
+          Plotly.newPlot('chart', fig.data, fig.layout, {{responsive: true, displaylogo: false}});
+        </script>
+      </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+@router.post("/correlation")
+async def post_correlation(request: CorrelationRequest):
+    """相関分析（POST）"""
+    try:
+        result = svc.get_correlation(request.tickers, method=request.method)
+        heatmap_safe = json.loads(json.dumps(result["heatmap"], default=str))
+        return jsonable_encoder({"matrix": result["matrix"], "heatmap": heatmap_safe})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/correlation/html", response_class=HTMLResponse)
+async def post_correlation_html(request: CorrelationRequest):
+    """相関分析HTML（POST）"""
+    result = svc.get_correlation(request.tickers, method=request.method)
+    fig_json = json.dumps(result["heatmap"], default=str)
+    html = f"""
+    <!doctype html>
+    <html lang=\"ja\">
+      <head>
+        <meta charset=\"utf-8\" />
+        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+        <title>相関ヒートマップ</title>
+        <script src=\"https://cdn.plot.ly/plotly-2.30.0.min.js\"></script>
+        <style>html, body {{ height: 100%; margin: 0; }} #chart {{ width: 100%; height: 100vh; }}</style>
+      </head>
+      <body>
+        <div id=\"chart\"></div>
+        <script>
+          const fig = {fig_json};
+          Plotly.newPlot('chart', fig.data, fig.layout, {{responsive: true, displaylogo: false}});
+        </script>
+      </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+@router.post("/consolidated-correlation")
+async def post_consolidated_correlation(request: CorrelationRequest):
+    """統合相関分析（POST）"""
+    try:
+        result = svc.get_consolidated_correlation(
+            request.tickers, 
+            method=request.method,
+            correlation_threshold=request.correlation_threshold,
+            consolidation_method=request.consolidation_method
+        )
+        original_heatmap_safe = json.loads(json.dumps(result["original_heatmap"], default=str))
+        consolidated_heatmap_safe = json.loads(json.dumps(result["consolidated_heatmap"], default=str))
+        return jsonable_encoder({
+            "original_matrix": result["original_matrix"],
+            "consolidated_matrix": result["consolidated_matrix"],
+            "groups": result["groups"],
+            "original_heatmap": original_heatmap_safe,
+            "consolidated_heatmap": consolidated_heatmap_safe,
+            "consolidation_info": result["consolidation_info"]
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/consolidated-correlation/html", response_class=HTMLResponse)
+async def post_consolidated_correlation_html(request: CorrelationRequest):
+    """統合相関分析HTML（POST）"""
+    result = svc.get_consolidated_correlation(
+        request.tickers, 
+        method=request.method,
+        correlation_threshold=request.correlation_threshold,
+        consolidation_method=request.consolidation_method
+    )
+    
+    # 統合前後のヒートマップを並べて表示
+    original_fig_json = json.dumps(result["original_heatmap"], default=str)
+    consolidated_fig_json = json.dumps(result["consolidated_heatmap"], default=str)
+    
+    # グループ情報を表示用に整形
+    groups_info = ""
+    for i, group in enumerate(result["groups"], 1):
+        if len(group) <= 3:
+            groups_info += f"<p><strong>グループ{i}:</strong> {' + '.join(group)}</p>"
+        else:
+            groups_info += f"<p><strong>グループ{i}:</strong> {group[0]} + {len(group)-1}個の資産</p>"
+    
+    html = f"""
+    <!doctype html>
+    <html lang="ja">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>統合相関分析</title>
+        <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+        <style>
+          html, body {{ height: 100%; margin: 0; }}
+          .container {{ display: flex; height: 100vh; }}
+          .chart {{ flex: 1; }}
+          .info {{ width: 300px; padding: 20px; background: #f5f5f5; overflow-y: auto; }}
+          .info h3 {{ margin-top: 0; }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="chart">
+            <div id="original-chart" style="height: 50%;"></div>
+            <div id="consolidated-chart" style="height: 50%;"></div>
+          </div>
+          <div class="info">
+            <h3>統合情報</h3>
+            <p><strong>閾値:</strong> {request.correlation_threshold}</p>
+            <p><strong>統合方法:</strong> {request.consolidation_method}</p>
+            <p><strong>元の資産数:</strong> {result["consolidation_info"]["original_assets"]}</p>
+            <p><strong>統合後資産数:</strong> {result["consolidation_info"]["consolidated_assets"]}</p>
+            <h3>相関グループ</h3>
+            {groups_info}
+          </div>
+        </div>
+        <script>
+          const originalFig = {original_fig_json};
+          const consolidatedFig = {consolidated_fig_json};
+          Plotly.newPlot('original-chart', originalFig.data, originalFig.layout, {{responsive: true, displaylogo: false}});
+          Plotly.newPlot('consolidated-chart', consolidatedFig.data, consolidatedFig.layout, {{responsive: true, displaylogo: false}});
+        </script>
+      </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
 
 @router.get("/summary")
 async def get_summary(

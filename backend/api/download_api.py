@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, Body
+from typing import List, Optional, Dict, Any
 import json
 from datetime import date
 from fastapi.responses import HTMLResponse
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 
 from services.download_service import DownloadService
 from data_provider.yahoo_provider import YahooFinanceProvider
@@ -17,6 +18,63 @@ try:
     svc.register_provider("yahoo", yahoo_provider)
 except ImportError as e:
     print(f"Warning: Yahoo Finance provider not available: {e}")
+
+# Pydanticモデル
+class DownloadRequest(BaseModel):
+    symbol: str
+    provider: str = "yahoo"
+    interval: str = "1d"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    prepost: bool = False
+
+@router.post("/")
+async def download_data(request: DownloadRequest):
+    """株価データをダウンロード（POST）"""
+    try:
+        # 日付の変換
+        start_dt = None
+        end_dt = None
+        
+        if request.start_date:
+            try:
+                start_dt = date.fromisoformat(request.start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        
+        if request.end_date:
+            try:
+                end_dt = date.fromisoformat(request.end_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        
+        # ダウンロード実行
+        result = svc.download_stock_data(
+            symbol=request.symbol,
+            provider_name=request.provider,
+            start_date=start_dt,
+            end_date=end_dt,
+            filename=None,
+            interval=request.interval,
+            prepost=request.prepost
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result["error"])
+        
+        return {
+            "success": True,
+            "symbol": request.symbol,
+            "provider": request.provider,
+            "file_path": result["file_path"],
+            "data_points": result["data_points"],
+            "metadata": result["metadata"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/providers")
 async def get_providers():
@@ -80,66 +138,6 @@ async def get_company_info(
             raise HTTPException(status_code=404, detail=f"Company info not found for {symbol}")
         
         return info
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/download")
-async def download_stock_data(
-    symbol: str = Query(..., description="株式シンボル（例: AAPL, 6758.T）"),
-    provider_name: str = Query("yahoo", description="使用するプロバイダー名"),
-    start_date: Optional[str] = Query(None, description="開始日（YYYY-MM-DD形式）"),
-    end_date: Optional[str] = Query(None, description="終了日（YYYY-MM-DD形式）"),
-    filename: Optional[str] = Query(None, description="保存するファイル名（.csv除く）"),
-    interval: str = Query("1d", description="データ間隔（1d, 1wk, 1mo等）"),
-    prepost: bool = Query(False, description="前後場データを含むか")
-):
-    """株価データをダウンロード"""
-    try:
-        # 日付の変換
-        start_dt = None
-        end_dt = None
-        
-        if start_date:
-            try:
-                start_dt = date.fromisoformat(start_date)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
-        
-        if end_date:
-            try:
-                end_dt = date.fromisoformat(end_date)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
-        
-        # ファイル名の処理
-        if filename and not filename.endswith('.csv'):
-            filename = f"{filename}.csv"
-        
-        # ダウンロード実行
-        result = svc.download_stock_data(
-            symbol=symbol,
-            provider_name=provider_name,
-            start_date=start_dt,
-            end_date=end_dt,
-            filename=filename,
-            interval=interval,
-            prepost=prepost
-        )
-        
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-        
-        return {
-            "success": True,
-            "symbol": symbol,
-            "provider": provider_name,
-            "file_path": result["file_path"],
-            "data_points": result["data_points"],
-            "metadata": result["metadata"]
-        }
-        
     except HTTPException:
         raise
     except Exception as e:

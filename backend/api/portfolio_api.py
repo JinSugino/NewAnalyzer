@@ -1,13 +1,209 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, Body
+from typing import List, Optional, Dict, Any
 import json
 from fastapi.responses import HTMLResponse
 from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
 
 from services.portfolio_service import PortfolioService
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
 svc = PortfolioService()
+
+# Pydanticモデル
+class PortfolioRequest(BaseModel):
+    tickers: Optional[List[str]] = None
+    method: str = "simple"
+    annualize: bool = True
+    periods_per_year: int = 252
+    r_f: float = 0.0
+    allow_short: bool = True
+    num_frontier_points: int = 50
+    num_samples: int = 2000
+    max_leverage: float = 2.0
+    consolidate_correlated: bool = False
+    correlation_threshold: float = 0.9
+    consolidation_method: str = "mean"
+    optimization_method: str = "sharpe"
+    target_return: Optional[float] = None
+    target_risk: Optional[float] = None
+    risk_tolerance: float = 1.0
+    max_weight: float = 1.0
+    min_weight: float = 0.0
+
+@router.post("/optimization")
+async def post_optimization(request: PortfolioRequest):
+    """ポートフォリオ最適化（POST）"""
+    try:
+        filenames = None
+        if request.tickers:
+            filenames = [f"{t}.csv" for t in request.tickers]
+        
+        result = svc.get_optimization_figure(
+            filenames,
+            method=request.method,
+            annualize=request.annualize,
+            periods_per_year=request.periods_per_year,
+            r_f=request.r_f,
+            allow_short=request.allow_short,
+            num_frontier_points=request.num_frontier_points,
+            num_samples=request.num_samples,
+            max_leverage=request.max_leverage,
+            consolidate_correlated=request.consolidate_correlated,
+            correlation_threshold=request.correlation_threshold,
+            consolidation_method=request.consolidation_method,
+            optimization_method=request.optimization_method,
+            target_return=request.target_return,
+            target_risk=request.target_risk,
+            risk_tolerance=request.risk_tolerance,
+            max_weight=request.max_weight,
+            min_weight=request.min_weight,
+        )
+        
+        return jsonable_encoder(json.loads(json.dumps(result, default=str)))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/optimization/html", response_class=HTMLResponse)
+async def post_optimization_html(request: PortfolioRequest):
+    """ポートフォリオ最適化HTML（POST）"""
+    try:
+        filenames = None
+        if request.tickers:
+            filenames = [f"{t}.csv" for t in request.tickers]
+        
+        result = svc.get_optimization_figure(
+            filenames,
+            method=request.method,
+            annualize=request.annualize,
+            periods_per_year=request.periods_per_year,
+            r_f=request.r_f,
+            allow_short=request.allow_short,
+            num_frontier_points=request.num_frontier_points,
+            num_samples=request.num_samples,
+            max_leverage=request.max_leverage,
+            consolidate_correlated=request.consolidate_correlated,
+            correlation_threshold=request.correlation_threshold,
+            consolidation_method=request.consolidation_method,
+            optimization_method=request.optimization_method,
+            target_return=request.target_return,
+            target_risk=request.target_risk,
+            risk_tolerance=request.risk_tolerance,
+            max_weight=request.max_weight,
+            min_weight=request.min_weight,
+        )
+        
+        fig = result["figure"]
+        fig_json = json.dumps(fig, default=str)
+        html = f"""
+        <!doctype html>
+        <html lang="ja">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Portfolio Optimization</title>
+            <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+            <style>html, body {{ height: 100%; margin: 0; }} #chart {{ width: 100%; height: 100vh; }}</style>
+          </head>
+          <body>
+            <div id="chart"></div>
+            <script>
+              const fig = {fig_json};
+              Plotly.newPlot('chart', fig.data, fig.layout, {{responsive: true, displaylogo: false}});
+            </script>
+          </body>
+        </html>
+        """
+        return HTMLResponse(content=html)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/efficient-frontier")
+async def post_efficient_frontier(request: PortfolioRequest):
+    """効率的フロンティア（POST）"""
+    try:
+        filenames = None
+        if request.tickers:
+            filenames = [f"{t}.csv" for t in request.tickers]
+        
+        result = svc.get_efficient_frontier_figure(
+            filenames,
+            method=request.method,
+            annualize=request.annualize,
+            periods_per_year=request.periods_per_year,
+            r_f=request.r_f,
+            allow_short=request.allow_short,
+            num_frontier_points=request.num_frontier_points,
+            num_samples=request.num_samples,
+            max_leverage=request.max_leverage,
+            consolidate_correlated=request.consolidate_correlated,
+            correlation_threshold=request.correlation_threshold,
+            consolidation_method=request.consolidation_method,
+            optimization_method=request.optimization_method,
+            target_return=request.target_return,
+            target_risk=request.target_risk,
+            risk_tolerance=request.risk_tolerance,
+            max_weight=request.max_weight,
+            min_weight=request.min_weight,
+        )
+        
+        return jsonable_encoder(json.loads(json.dumps(result, default=str)))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/efficient-frontier/html", response_class=HTMLResponse)
+async def post_efficient_frontier_html(request: PortfolioRequest):
+    """効率的フロンティアHTML（POST）"""
+    try:
+        filenames = None
+        if request.tickers:
+            filenames = [f"{t}.csv" for t in request.tickers]
+        
+        result = svc.get_efficient_frontier_figure(
+            filenames,
+            method=request.method,
+            annualize=request.annualize,
+            periods_per_year=request.periods_per_year,
+            r_f=request.r_f,
+            allow_short=request.allow_short,
+            num_frontier_points=request.num_frontier_points,
+            num_samples=request.num_samples,
+            max_leverage=request.max_leverage,
+            consolidate_correlated=request.consolidate_correlated,
+            correlation_threshold=request.correlation_threshold,
+            consolidation_method=request.consolidation_method,
+            optimization_method=request.optimization_method,
+            target_return=request.target_return,
+            target_risk=request.target_risk,
+            risk_tolerance=request.risk_tolerance,
+            max_weight=request.max_weight,
+            min_weight=request.min_weight,
+        )
+        
+        fig = result["figure"]
+        fig_json = json.dumps(fig, default=str)
+        html = f"""
+        <!doctype html>
+        <html lang="ja">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>Efficient Frontier</title>
+            <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+            <style>html, body {{ height: 100%; margin: 0; }} #chart {{ width: 100%; height: 100vh; }}</style>
+          </head>
+          <body>
+            <div id="chart"></div>
+            <script>
+              const fig = {fig_json};
+              Plotly.newPlot('chart', fig.data, fig.layout, {{responsive: true, displaylogo: false}});
+            </script>
+          </body>
+        </html>
+        """
+        return HTMLResponse(content=html)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/inputs")
 async def get_inputs(
