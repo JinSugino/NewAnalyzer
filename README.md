@@ -80,22 +80,36 @@ flutter run -d chrome
 - `GET /health` - サーバー状態確認
 
 ### チャート
-- `GET /chart/html/{symbol}` - HTMLチャート表示
-- `GET /chart/data/{symbol}` - チャートデータ取得
+- `GET /chart/candlestick/{filename}` - ローソク足チャートデータ取得
+- `GET /chart/html/{filename}` - HTMLチャート表示
+- `GET /chart/json/{filename}` - JSON形式チャートデータ
+- `GET /chart/available-files` - 利用可能ファイル一覧
+- `GET /chart/file-info/{filename}` - ファイル情報取得
 
 ### ダウンロード
-- `POST /download` - データダウンロード
-- `GET /download/available-files` - 利用可能ファイル一覧
+- `POST /download/` - データダウンロード
 - `GET /download/providers` - プロバイダー一覧
+- `GET /download/provider/{provider_name}/info` - プロバイダー詳細情報
+- `GET /download/search` - シンボル検索
+- `GET /download/company/{symbol}` - 企業情報取得
+- `GET /download/files` - ダウンロード済みファイル一覧
+- `GET /download/files/{filename}/info` - ファイル詳細情報
+- `GET /download/files/info` - 全ファイル情報一括取得
+- `GET /download/validate/{symbol}` - シンボル検証
 
 ### 分析
 - `POST /analysis/summary` - 統計サマリー分析
+- `POST /analysis/summary/html` - 統計サマリー分析HTML表示
 - `POST /analysis/correlation` - 相関分析
+- `POST /analysis/correlation/html` - 相関分析HTML表示
 - `POST /analysis/consolidated-correlation` - 統合相関分析
+- `POST /analysis/consolidated-correlation/html` - 統合相関分析HTML表示
 
 ### ポートフォリオ
 - `POST /portfolio/optimization` - ポートフォリオ最適化
+- `POST /portfolio/optimization/html` - ポートフォリオ最適化HTML表示
 - `POST /portfolio/efficient-frontier` - 効率的フロンティア
+- `POST /portfolio/efficient-frontier/html` - 効率的フロンティアHTML表示
 
 ## 🐛 トラブルシューティング
 

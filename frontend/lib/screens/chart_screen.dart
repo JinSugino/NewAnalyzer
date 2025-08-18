@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../api/chart_api.dart';
 import '../models/chart.dart';
 import '../utils/constants.dart';
+
+// Webプラットフォーム用のdart:html
+import 'dart:html' as html if (dart.library.io) 'dart:io' as html;
 
 class ChartScreen extends StatefulWidget {
   const ChartScreen({super.key});
@@ -19,6 +23,8 @@ class _ChartScreenState extends State<ChartScreen> {
   String? _htmlContent;
   bool _isLoading = false;
   String? _errorMessage;
+  WebViewController? _webViewController;
+  html.Element? _webElement;
 
   @override
   void initState() {
@@ -66,13 +72,23 @@ class _ChartScreenState extends State<ChartScreen> {
     });
 
     try {
-      // JSONデータを取得
-      final response = await ChartApi.getJsonChart(_selectedFile!, _chartParams);
+      // HTMLコンテンツを直接取得
+      final response = await ChartApi.getHtmlChart(_selectedFile!, _chartParams);
       if (response.isSuccess) {
         setState(() {
-          _htmlContent = response.data!['html_content'];
+          _htmlContent = response.data!;
           _isLoading = false;
         });
+        
+        // WebViewにHTMLを読み込み
+        if (_webViewController != null && _htmlContent != null) {
+          await _webViewController!.loadHtmlString(_htmlContent!);
+        }
+        
+        // Webプラットフォーム用のiframe更新
+        if (kIsWeb && _htmlContent != null) {
+          _updateWebIframe();
+        }
       } else {
         setState(() {
           _errorMessage = response.error;
@@ -84,6 +100,28 @@ class _ChartScreenState extends State<ChartScreen> {
         _errorMessage = 'チャートの読み込みに失敗しました: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  void _updateWebIframe() {
+    if (kIsWeb && _htmlContent != null) {
+      // 既存のiframeを削除
+      if (_webElement != null) {
+        _webElement!.remove();
+      }
+      
+      // 新しいiframeを作成
+      final iframe = html.IFrameElement()
+        ..src = 'data:text/html;charset=utf-8,${Uri.encodeComponent(_htmlContent!)}'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..allowFullscreen = true;
+      
+      _webElement = iframe;
+      
+      // DOMに追加
+      html.document.body?.append(iframe);
     }
   }
 
@@ -442,154 +480,95 @@ class _ChartScreenState extends State<ChartScreen> {
       );
     }
 
-    if (_htmlContent == null) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
+    // チャート表示エリア
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      child: _htmlContent != null
+          ? _buildChartWidget()
+          : Center(
+              child: Text(
+                'チャートを読み込み中...',
+                style: TextStyle(
+                  fontSize: TextStyles.body1Size,
+                  color: Color(AppColors.textSecondaryColor),
+                ),
+              ),
+            ),
+    );
+  }
 
-    // プラットフォーム固有のチャート表示
+  Widget _buildChartWidget() {
     if (kIsWeb) {
-      // WebプラットフォームではHTMLを直接表示
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(UIConstants.borderRadius),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'チャート表示（Web版）',
-                style: TextStyle(
-                  fontSize: TextStyles.headline3Size,
-                  fontWeight: FontWeight.bold,
-                  color: Color(AppColors.textColor),
-                ),
-              ),
-              const SizedBox(height: UIConstants.defaultPadding),
-              Text(
-                'Webプラットフォームでは、インタラクティブチャートの表示が制限されています。',
-                style: TextStyle(
-                  fontSize: TextStyles.body1Size,
-                  color: Color(AppColors.textSecondaryColor),
-                ),
-              ),
-              const SizedBox(height: UIConstants.defaultPadding),
-              ElevatedButton(
-                onPressed: () {
-                  // HTMLコンテンツを新しいウィンドウで開く
-                  if (kIsWeb && _htmlContent != null) {
-                    // dart:htmlを使用して新しいウィンドウを開く
-                    // 注意: これはWebプラットフォームでのみ動作
-                  }
-                },
-                child: const Text('新しいウィンドウでチャートを開く'),
-              ),
-            ],
-          ),
-        ),
-      );
-    } else if (Platform.isAndroid || Platform.isIOS) {
-      // モバイルプラットフォームではWebViewを使用
-      // 注意: WebViewはモバイル専用
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(UIConstants.borderRadius),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.show_chart,
-                size: 64,
-                color: Color(AppColors.textSecondaryColor),
-              ),
-              const SizedBox(height: UIConstants.largePadding),
-              Text(
-                'モバイルプラットフォーム',
-                style: TextStyle(
-                  fontSize: TextStyles.headline3Size,
-                  fontWeight: FontWeight.bold,
-                  color: Color(AppColors.textColor),
-                ),
-              ),
-              const SizedBox(height: UIConstants.defaultPadding),
-              Text(
-                'モバイルプラットフォームでは、WebViewを使用してチャートを表示します。',
-                style: TextStyle(
-                  fontSize: TextStyles.body1Size,
-                  color: Color(AppColors.textSecondaryColor),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
+      // WebプラットフォームではHtmlElementViewを使用
+      return HtmlElementView(
+        viewType: 'chart-iframe',
+        onPlatformViewCreated: (int id) {
+          // iframeの作成
+          _createWebIframe();
+        },
       );
     } else {
-      // その他のプラットフォームではHTMLをテキストとして表示
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(UIConstants.borderRadius),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'チャート表示（デスクトップ版）',
-                style: TextStyle(
-                  fontSize: TextStyles.headline3Size,
-                  fontWeight: FontWeight.bold,
-                  color: Color(AppColors.textColor),
-                ),
-              ),
-              const SizedBox(height: UIConstants.defaultPadding),
-              Text(
-                'デスクトッププラットフォームでは、インタラクティブチャートの表示が制限されています。',
-                style: TextStyle(
-                  fontSize: TextStyles.body1Size,
-                  color: Color(AppColors.textSecondaryColor),
-                ),
-              ),
-              const SizedBox(height: UIConstants.defaultPadding),
-              Text(
-                'HTMLコンテンツ:',
-                style: TextStyle(
-                  fontSize: TextStyles.body1Size,
-                  fontWeight: FontWeight.bold,
-                  color: Color(AppColors.textColor),
-                ),
-              ),
-              const SizedBox(height: UIConstants.smallPadding),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  _htmlContent!,
-                  style: TextStyle(
-                    fontSize: TextStyles.body2Size,
-                    fontFamily: 'monospace',
-                    color: Color(AppColors.textColor),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      // モバイル・デスクトッププラットフォームではWebViewを使用
+      return WebViewWidget(
+        controller: _webViewController ?? _createWebViewController(),
       );
     }
+  }
+
+  void _createWebIframe() {
+    if (kIsWeb && _htmlContent != null) {
+      // 既存のiframeを削除
+      if (_webElement != null) {
+        _webElement!.remove();
+      }
+      
+      // 新しいiframeを作成
+      final iframe = html.IFrameElement()
+        ..src = 'data:text/html;charset=utf-8,${Uri.encodeComponent(_htmlContent!)}'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..allowFullscreen = true;
+      
+      _webElement = iframe;
+      
+      // DOMに追加
+      html.document.body?.append(iframe);
+    }
+  }
+
+  WebViewController _createWebViewController() {
+    final controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.white)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (int progress) {
+            // 読み込み進捗
+          },
+          onPageStarted: (String url) {
+            // ページ読み込み開始
+          },
+          onPageFinished: (String url) {
+            // ページ読み込み完了
+          },
+          onWebResourceError: (WebResourceError error) {
+            // エラー処理
+            setState(() {
+              _errorMessage = 'WebViewエラー: ${error.description}';
+            });
+          },
+        ),
+      );
+
+    _webViewController = controller;
+    
+    // HTMLコンテンツが既にある場合は読み込み
+    if (_htmlContent != null) {
+      controller.loadHtmlString(_htmlContent!);
+    }
+
+    return controller;
   }
 }

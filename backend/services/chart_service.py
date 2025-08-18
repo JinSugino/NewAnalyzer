@@ -278,6 +278,8 @@ class ChartService:
             fig.add_trace(go.Bar(x=df['Date'], y=hist, name='MACD Hist', marker_color=['#26A69A' if v >= 0 else '#EF5350' for v in hist.fillna(0)]), row=row_macd, col=1)
             fig.add_trace(go.Scatter(x=df['Date'], y=macd, mode='lines', name='MACD', line=dict(color='#FF7043', width=1.2)), row=row_macd, col=1)
             fig.add_trace(go.Scatter(x=df['Date'], y=macd_signal, mode='lines', name='Signal', line=dict(color='#42A5F5', width=1)), row=row_macd, col=1)
+            
+
 
         # Volume panel
         fig.add_trace(
