@@ -1,0 +1,96 @@
+[
+  {
+    "timestamp": "2025-08-19T00:04:59.910268",
+    "endpoint": "/chart/html/SPY.csv",
+    "parameters": {
+      "currency": "USD",
+      "with_indicators": true
+    },
+    "response_type": "chart_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.911278",
+    "endpoint": "/chart/html/SPY.csv",
+    "parameters": {
+      "currency": "JPY",
+      "with_indicators": true
+    },
+    "response_type": "chart_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.913291",
+    "endpoint": "/chart/html/7203.csv",
+    "parameters": {
+      "currency": "JPY",
+      "with_indicators": false
+    },
+    "response_type": "chart_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.914298",
+    "endpoint": "/analysis/correlation/html",
+    "parameters": {
+      "currency": "JPY",
+      "tickers": [
+        "SPY",
+        "MSFT",
+        "7203",
+        "9984"
+      ]
+    },
+    "response_type": "correlation_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.915302",
+    "endpoint": "/analysis/consolidated-correlation/html",
+    "parameters": {
+      "currency": "JPY",
+      "correlation_threshold": 0.9
+    },
+    "response_type": "consolidated_correlation_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.916310",
+    "endpoint": "/analysis/summary/html",
+    "parameters": {
+      "currency": "JPY",
+      "tickers": [
+        "SPY",
+        "MSFT",
+        "7203",
+        "9984"
+      ]
+    },
+    "response_type": "statistics_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.918354",
+    "endpoint": "/portfolio/optimization/html",
+    "parameters": {
+      "currency": "JPY",
+      "consolidate_correlated": true,
+      "tickers": [
+        "SPY",
+        "MSFT",
+        "7203",
+        "9984"
+      ]
+    },
+    "response_type": "portfolio_response"
+  },
+  {
+    "timestamp": "2025-08-19T00:04:59.919363",
+    "endpoint": "/portfolio/optimization/html",
+    "parameters": {
+      "currency": "JPY",
+      "consolidate_correlated": false,
+      "tickers": [
+        "SPY",
+        "MSFT",
+        "7203",
+        "9984"
+      ]
+    },
+    "response_type": "portfolio_response"
+  }
+]

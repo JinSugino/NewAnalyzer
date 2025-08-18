@@ -1,0 +1,50 @@
+{
+  "currency": "JPY",
+  "tickers": [
+    "SPY",
+    "MSFT",
+    "7203",
+    "9984"
+  ],
+  "consolidate_correlated": false,
+  "optimization_method": "sharpe",
+  "allow_short": true,
+  "efficient_frontier": {
+    "risks": [
+      0.2,
+      0.25,
+      0.3,
+      0.35,
+      0.4
+    ],
+    "returns": [
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.35
+    ]
+  },
+  "optimal_portfolio": {
+    "weights": {
+      "SPY": 0.3,
+      "MSFT": 0.4,
+      "7203": 0.15,
+      "9984": 0.15
+    },
+    "expected_return": 0.25,
+    "expected_risk": 0.28,
+    "sharpe_ratio": 0.89
+  },
+  "metadata": {
+    "currency_converted": true,
+    "exchange_rate_used": 150.0,
+    "data_sources": {
+      "SPY": "data_analysis/SPY_JPY.csv",
+      "MSFT": "data_analysis/MSFT_JPY.csv",
+      "7203": "data/7203.csv",
+      "9984": "data/9984.csv"
+    },
+    "consolidation_groups": []
+  }
+}

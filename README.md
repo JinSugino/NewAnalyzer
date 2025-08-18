@@ -74,6 +74,12 @@ flutter run -d chrome
 - 複数プロバイダー対応
 - バッチダウンロード
 
+### 通貨機能
+- 円・ドル表記切替
+- 為替レート自動取得
+- 通貨換算対応
+- 分析用データ自動生成
+
 ## 🌐 API エンドポイント
 
 ### 健康チェック
@@ -96,6 +102,11 @@ flutter run -d chrome
 - `GET /download/files/{filename}/info` - ファイル詳細情報
 - `GET /download/files/info` - 全ファイル情報一括取得
 - `GET /download/validate/{symbol}` - シンボル検証
+
+### 通貨
+- `POST /currency/download-exchange-rate` - 為替レートダウンロード
+- `POST /currency/convert` - 通貨換算実行
+- `GET /currency/exchange-rate-status` - 為替レート状態確認
 
 ### 分析
 - `POST /analysis/summary` - 統計サマリー分析
@@ -127,6 +138,48 @@ flutter run -d chrome
 1. 最低2つ以上のティッカーを指定
 2. データの期間が十分か確認
 3. パラメータ設定を確認
+
+### 通貨機能の使用方法
+
+#### 1. 為替レートのダウンロード
+```bash
+curl -X POST "http://localhost:8000/currency/download-exchange-rate"
+```
+
+#### 2. 通貨換算の実行
+```bash
+curl -X POST "http://localhost:8000/currency/convert" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "files": ["AAPL.csv", "7203.T.csv"],
+    "target_currency": "JPY"
+  }'
+```
+
+#### 3. 分析APIでの通貨指定
+```bash
+curl -X POST "http://localhost:8000/analysis/summary" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tickers": ["AAPL", "7203.T"],
+    "currency": "JPY"
+  }'
+```
+
+#### 4. チャートAPIでの通貨指定
+```bash
+curl "http://localhost:8000/chart/candlestick/AAPL.csv?currency=JPY"
+```
+
+#### 5. ポートフォリオAPIでの通貨指定
+```bash
+curl -X POST "http://localhost:8000/portfolio/optimization" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tickers": ["AAPL", "7203.T"],
+    "currency": "JPY"
+  }'
+```
 
 ## 📁 プロジェクト構造
 

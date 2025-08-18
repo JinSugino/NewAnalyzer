@@ -29,21 +29,49 @@ class PortfolioService:
     def list_csv_files(self) -> List[str]:
         if not os.path.exists(self.data_dir):
             return []
-        return [f for f in os.listdir(self.data_dir) if f.endswith(".csv")]
+        # USDJPY.csvを除外し、株価データのみを取得
+        return [f for f in os.listdir(self.data_dir) if f.endswith(".csv") and f != "USDJPY.csv"]
 
     def _filename_to_ticker(self, filename: str) -> str:
         return filename.replace(".csv", "")
 
-    def load_close_prices(self, filenames: Optional[List[str]] = None) -> pd.DataFrame:
+    def load_close_prices(self, filenames: Optional[List[str]] = None, currency: str = "USD") -> pd.DataFrame:
         files = filenames if filenames else self.list_csv_files()
         series_list: List[pd.Series] = []
         for f in files:
             try:
-                df = self.chart_service.load_csv_data(f)
+                # 通貨換算に対応したファイルパスを取得
+                from services.currency_service import CurrencyService
+                currency_service = CurrencyService()
+                file_path = currency_service.get_analysis_file_path(f, currency)
+                
+                # ファイルを読み込み
+                df = pd.read_csv(file_path)
+                
+                # 特殊なCSV構造に対応（最初の2行をスキップしてDateカラムを設定）
+                if 'Date' not in df.columns and len(df.columns) >= 6:
+                    df = df.iloc[2:].reset_index(drop=True)
+                    df.columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+                    
+                    # 空のDate行を削除
+                    df = df.dropna(subset=['Date'])
+                    df = df[df['Date'] != '']
+                
+                # 数値列を数値型に変換
+                for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                # 欠損値を削除
+                df = df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'])
+                
+                df['Date'] = pd.to_datetime(df['Date'])
+                
                 s = df.set_index("Date")["Close"].astype(float)
                 s.name = self._filename_to_ticker(f)
                 series_list.append(s)
-            except Exception:
+            except Exception as e:
+                print(f"Error loading {f}: {e}")
                 continue
         if not series_list:
             raise ValueError("有効なCSVがありません")
@@ -61,6 +89,7 @@ class PortfolioService:
         consolidate_correlated: bool = False,
         correlation_threshold: float = 0.9,
         consolidation_method: str = "mean",
+        currency: str = "USD",
     ) -> Tuple[pd.Series, pd.DataFrame]:
         if consolidate_correlated:
             # 相関統合を先に実行
@@ -68,11 +97,12 @@ class PortfolioService:
                 filenames,
                 method=method,
                 correlation_threshold=correlation_threshold,
-                consolidation_method=consolidation_method
+                consolidation_method=consolidation_method,
+                currency=currency
             )
             prices = result["consolidated_prices"]
         else:
-            prices = self.load_close_prices(filenames)
+            prices = self.load_close_prices(filenames, currency=currency)
         
         if method == "log":
             rets = np.log(prices / prices.shift(1))
@@ -483,6 +513,7 @@ class PortfolioService:
         risk_tolerance: float = 1.0,
         max_weight: float = 1.0,
         min_weight: float = 0.0,
+        currency: str = "USD",
     ) -> Dict:
         mu, Sigma = self.estimate_mu_sigma(
             filenames, 
@@ -491,7 +522,8 @@ class PortfolioService:
             periods_per_year=periods_per_year,
             consolidate_correlated=consolidate_correlated,
             correlation_threshold=correlation_threshold,
-            consolidation_method=consolidation_method
+            consolidation_method=consolidation_method,
+            currency=currency
         )
         
         # 最適化方法に応じて適切なパラメータを設定
@@ -543,6 +575,7 @@ class PortfolioService:
         risk_tolerance: float = 1.0,
         max_weight: float = 1.0,
         min_weight: float = 0.0,
+        currency: str = "USD",
     ) -> Dict:
         mu, Sigma = self.estimate_mu_sigma(
             filenames, 
@@ -551,7 +584,8 @@ class PortfolioService:
             periods_per_year=periods_per_year,
             consolidate_correlated=consolidate_correlated,
             correlation_threshold=correlation_threshold,
-            consolidation_method=consolidation_method
+            consolidation_method=consolidation_method,
+            currency=currency
         )
         
         # 効率的フロンティアの表示

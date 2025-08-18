@@ -15,6 +15,7 @@ _indicator_desc = "with_indicators=true でデフォルト全有効。個別制�
 async def get_candlestick_chart(
     filename: str,
     with_indicators: bool = Query(False, description="代表的指標を一括有効化"),
+    currency: str = Query("USD", description="通貨: USD または JPY"),
     # 注釈/軸
     annotate_dates: Optional[List[str]] = Query(None, description="注釈日付 YYYY-MM-DD/ YYYY/MM/DD"),
     mark_month_start: bool = Query(False, description="各月の最初の営業日に縦線注釈"),
@@ -52,6 +53,7 @@ async def get_candlestick_chart(
         result = chart_service.get_chart_data(
             filename,
             with_indicators,
+            currency=currency,
             annotate_dates=annotate_dates,
             mark_month_start=mark_month_start,
             axis_tick=axis_tick,
@@ -73,6 +75,7 @@ async def get_candlestick_chart(
 async def get_candlestick_chart_html(
     filename: str,
     with_indicators: bool = Query(False, description="代表的指標を一括有効化"),
+    currency: str = Query("USD"),
     annotate_dates: Optional[List[str]] = Query(None),
     mark_month_start: bool = Query(False),
     axis_tick: str = Query("auto"),
@@ -107,6 +110,7 @@ async def get_candlestick_chart_html(
         result = chart_service.get_chart_data(
             filename,
             with_indicators,
+            currency=currency,
             annotate_dates=annotate_dates,
             mark_month_start=mark_month_start,
             axis_tick=axis_tick,
@@ -151,6 +155,7 @@ async def get_candlestick_chart_html(
 async def get_candlestick_chart_json(
     filename: str,
     with_indicators: bool = Query(False, description="代表的指標を一括有効化"),
+    currency: str = Query("USD", description="通貨: USD または JPY"),
     annotate_dates: Optional[List[str]] = Query(None),
     mark_month_start: bool = Query(False),
     axis_tick: str = Query("auto"),
@@ -185,6 +190,7 @@ async def get_candlestick_chart_json(
         result = chart_service.get_chart_data(
             filename,
             with_indicators,
+            currency=currency,
             annotate_dates=annotate_dates,
             mark_month_start=mark_month_start,
             axis_tick=axis_tick,

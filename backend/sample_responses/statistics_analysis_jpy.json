@@ -1,0 +1,57 @@
+{
+  "currency": "JPY",
+  "tickers": [
+    "SPY",
+    "MSFT",
+    "7203",
+    "9984"
+  ],
+  "statistics": {
+    "SPY": {
+      "mean_return_daily": 0.0008,
+      "volatility_daily": 0.015,
+      "sharpe_daily": 0.053,
+      "mean_return_annual": 0.2,
+      "volatility_annual": 0.24,
+      "sharpe_annual": 0.83,
+      "observations": 1255
+    },
+    "MSFT": {
+      "mean_return_daily": 0.0012,
+      "volatility_daily": 0.018,
+      "sharpe_daily": 0.067,
+      "mean_return_annual": 0.3,
+      "volatility_annual": 0.29,
+      "sharpe_annual": 1.03,
+      "observations": 1255
+    },
+    "7203": {
+      "mean_return_daily": 0.0006,
+      "volatility_daily": 0.02,
+      "sharpe_daily": 0.03,
+      "mean_return_annual": 0.15,
+      "volatility_annual": 0.32,
+      "sharpe_annual": 0.47,
+      "observations": 1255
+    },
+    "9984": {
+      "mean_return_daily": 0.0007,
+      "volatility_daily": 0.022,
+      "sharpe_daily": 0.032,
+      "mean_return_annual": 0.18,
+      "volatility_annual": 0.35,
+      "sharpe_annual": 0.51,
+      "observations": 1255
+    }
+  },
+  "metadata": {
+    "currency_converted": true,
+    "exchange_rate_used": 150.0,
+    "data_sources": {
+      "SPY": "data_analysis/SPY_JPY.csv",
+      "MSFT": "data_analysis/MSFT_JPY.csv",
+      "7203": "data/7203.csv",
+      "9984": "data/9984.csv"
+    }
+  }
+}

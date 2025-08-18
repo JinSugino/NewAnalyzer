@@ -1,0 +1,54 @@
+{
+  "ticker": "SPY",
+  "currency": "USD",
+  "with_indicators": true,
+  "data": {
+    "dates": [
+      "2020-01-01",
+      "2020-01-02",
+      "2020-01-03"
+    ],
+    "open": [
+      100.0,
+      101.0,
+      102.0
+    ],
+    "high": [
+      102.0,
+      103.0,
+      104.0
+    ],
+    "low": [
+      99.0,
+      100.0,
+      101.0
+    ],
+    "close": [
+      101.0,
+      102.0,
+      103.0
+    ],
+    "volume": [
+      1000000,
+      1100000,
+      1200000
+    ]
+  },
+  "indicators": {
+    "sma_20": [
+      100.5,
+      100.7,
+      100.9
+    ],
+    "sma_50": [
+      100.2,
+      100.3,
+      100.4
+    ]
+  },
+  "metadata": {
+    "currency_converted": false,
+    "exchange_rate_used": 1.0,
+    "data_source": "data_analysis"
+  }
+}

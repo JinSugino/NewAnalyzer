@@ -4,6 +4,7 @@ from api.chart_api import router as chart_router
 from api.analysis_api import router as analysis_router
 from api.portfolio_api import router as portfolio_router
 from api.download_api import router as download_router
+from api.currency_api import router as currency_router
 import uvicorn
 
 # FastAPIアプリケーションを作成
@@ -27,6 +28,7 @@ app.include_router(chart_router)
 app.include_router(analysis_router)
 app.include_router(portfolio_router)
 app.include_router(download_router)
+app.include_router(currency_router)
 
 @app.get("/")
 async def root():
@@ -39,6 +41,7 @@ async def root():
             "analysis": "/analysis",
             "portfolio": "/portfolio",
             "download": "/download",
+            "currency": "/currency",
             "docs": "/docs",
             "redoc": "/redoc"
         }

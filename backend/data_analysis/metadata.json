@@ -1,0 +1,32 @@
+{
+  "conversion_date": "2025-08-18T23:48:56.313543",
+  "exchange_rate_file": "USDJPY.csv",
+  "conversions": {
+    "7203.csv": {},
+    "9984.csv": {},
+    "AAPL.csv": {
+      "JPY": "AAPL_JPY.csv"
+    },
+    "MSFT.csv": {
+      "JPY": "MSFT_JPY.csv"
+    },
+    "SPY.csv": {
+      "JPY": "SPY_JPY.csv"
+    },
+    "VOO.csv": {
+      "JPY": "VOO_JPY.csv"
+    },
+    "VT.csv": {
+      "JPY": "VT_JPY.csv"
+    }
+  },
+  "original_files": [
+    "7203.csv",
+    "9984.csv",
+    "AAPL.csv",
+    "MSFT.csv",
+    "SPY.csv",
+    "VOO.csv",
+    "VT.csv"
+  ]
+}

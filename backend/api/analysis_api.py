@@ -16,18 +16,26 @@ class AnalysisRequest(BaseModel):
     risk_free_rate: float = 0.0
     periods_per_year: int = 252
     method: str = "simple"
+    currency: str = "USD"  # "USD" or "JPY"
 
 class CorrelationRequest(BaseModel):
     tickers: Optional[List[str]] = None
     method: str = "simple"
     correlation_threshold: float = 0.9
     consolidation_method: str = "mean"
+    currency: str = "USD"  # "USD" or "JPY"
 
 @router.post("/summary")
 async def post_summary(request: AnalysisRequest):
     """統計サマリー分析（POST）"""
     try:
-        result = svc.get_summary(request.tickers, risk_free_rate=request.risk_free_rate, periods_per_year=request.periods_per_year, method=request.method)
+        result = svc.get_summary(
+            request.tickers, 
+            risk_free_rate=request.risk_free_rate, 
+            periods_per_year=request.periods_per_year, 
+            method=request.method,
+            currency=request.currency
+        )
         table_safe = json.loads(json.dumps(result["table"], default=str))
         return jsonable_encoder({"summary": result["summary"], "table": table_safe})
     except Exception as e:
@@ -36,7 +44,13 @@ async def post_summary(request: AnalysisRequest):
 @router.post("/summary/html", response_class=HTMLResponse)
 async def post_summary_html(request: AnalysisRequest):
     """統計サマリー分析HTML（POST）"""
-    result = svc.get_summary(request.tickers, risk_free_rate=request.risk_free_rate, periods_per_year=request.periods_per_year, method=request.method)
+    result = svc.get_summary(
+        request.tickers, 
+        risk_free_rate=request.risk_free_rate, 
+        periods_per_year=request.periods_per_year, 
+        method=request.method,
+        currency=request.currency
+    )
     fig_json = json.dumps(result["table"], default=str)
     html = f"""
     <!doctype html>
@@ -63,7 +77,11 @@ async def post_summary_html(request: AnalysisRequest):
 async def post_correlation(request: CorrelationRequest):
     """相関分析（POST）"""
     try:
-        result = svc.get_correlation(request.tickers, method=request.method)
+        result = svc.get_correlation(
+            request.tickers, 
+            method=request.method,
+            currency=request.currency
+        )
         heatmap_safe = json.loads(json.dumps(result["heatmap"], default=str))
         return jsonable_encoder({"matrix": result["matrix"], "heatmap": heatmap_safe})
     except Exception as e:
@@ -72,7 +90,11 @@ async def post_correlation(request: CorrelationRequest):
 @router.post("/correlation/html", response_class=HTMLResponse)
 async def post_correlation_html(request: CorrelationRequest):
     """相関分析HTML（POST）"""
-    result = svc.get_correlation(request.tickers, method=request.method)
+    result = svc.get_correlation(
+        request.tickers, 
+        method=request.method,
+        currency=request.currency
+    )
     fig_json = json.dumps(result["heatmap"], default=str)
     html = f"""
     <!doctype html>
@@ -103,7 +125,8 @@ async def post_consolidated_correlation(request: CorrelationRequest):
             request.tickers, 
             method=request.method,
             correlation_threshold=request.correlation_threshold,
-            consolidation_method=request.consolidation_method
+            consolidation_method=request.consolidation_method,
+            currency=request.currency
         )
         original_heatmap_safe = json.loads(json.dumps(result["original_heatmap"], default=str))
         consolidated_heatmap_safe = json.loads(json.dumps(result["consolidated_heatmap"], default=str))
@@ -125,7 +148,8 @@ async def post_consolidated_correlation_html(request: CorrelationRequest):
         request.tickers, 
         method=request.method,
         correlation_threshold=request.correlation_threshold,
-        consolidation_method=request.consolidation_method
+        consolidation_method=request.consolidation_method,
+        currency=request.currency
     )
     
     # 統合前後のヒートマップを並べて表示
@@ -188,10 +212,17 @@ async def get_summary(
     tickers: Optional[List[str]] = Query(None, description="分析対象のティッカー（ファイル名から .csv を除いたもの）"),
     risk_free_rate: float = Query(0.0, description="年率の無リスク金利 (例: 0.01=1%)"),
     periods_per_year: int = Query(252, description="年換算の期間数 (株式は252が一般的)"),
-    method: str = Query("simple", description="リターン計算: simple または log")
+    method: str = Query("simple", description="リターン計算: simple または log"),
+    currency: str = Query("USD", description="通貨: USD または JPY")
 ):
     try:
-        result = svc.get_summary(tickers, risk_free_rate=risk_free_rate, periods_per_year=periods_per_year, method=method)
+        result = svc.get_summary(
+            tickers, 
+            risk_free_rate=risk_free_rate, 
+            periods_per_year=periods_per_year, 
+            method=method,
+            currency=currency
+        )
         table_safe = json.loads(json.dumps(result["table"], default=str))
         return jsonable_encoder({"summary": result["summary"], "table": table_safe})
     except Exception as e:
@@ -202,9 +233,16 @@ async def get_summary_html(
     tickers: Optional[List[str]] = Query(None),
     risk_free_rate: float = Query(0.0),
     periods_per_year: int = Query(252),
-    method: str = Query("simple")
+    method: str = Query("simple"),
+    currency: str = Query("USD")
 ):
-    result = svc.get_summary(tickers, risk_free_rate=risk_free_rate, periods_per_year=periods_per_year, method=method)
+    result = svc.get_summary(
+        tickers, 
+        risk_free_rate=risk_free_rate, 
+        periods_per_year=periods_per_year, 
+        method=method,
+        currency=currency
+    )
     fig_json = json.dumps(result["table"], default=str)
     html = f"""
     <!doctype html>
@@ -230,10 +268,15 @@ async def get_summary_html(
 @router.get("/correlation")
 async def get_correlation(
     tickers: Optional[List[str]] = Query(None),
-    method: str = Query("simple")
+    method: str = Query("simple"),
+    currency: str = Query("USD")
 ):
     try:
-        result = svc.get_correlation(tickers, method=method)
+        result = svc.get_correlation(
+            tickers, 
+            method=method,
+            currency=currency
+        )
         heatmap_safe = json.loads(json.dumps(result["heatmap"], default=str))
         return jsonable_encoder({"matrix": result["matrix"], "heatmap": heatmap_safe})
     except Exception as e:
@@ -242,9 +285,14 @@ async def get_correlation(
 @router.get("/correlation/html", response_class=HTMLResponse)
 async def get_correlation_html(
     tickers: Optional[List[str]] = Query(None),
-    method: str = Query("simple")
+    method: str = Query("simple"),
+    currency: str = Query("USD")
 ):
-    result = svc.get_correlation(tickers, method=method)
+    result = svc.get_correlation(
+        tickers, 
+        method=method,
+        currency=currency
+    )
     fig_json = json.dumps(result["heatmap"], default=str)
     html = f"""
     <!doctype html>
@@ -272,14 +320,16 @@ async def get_consolidated_correlation(
     tickers: Optional[List[str]] = Query(None, description="分析対象のティッカー（ファイル名から .csv を除いたもの）"),
     method: str = Query("simple", description="リターン計算: simple または log"),
     correlation_threshold: float = Query(0.9, description="相関統合の閾値 (0.9=90%)"),
-    consolidation_method: str = Query("mean", description="統合方法: mean, median, first")
+    consolidation_method: str = Query("mean", description="統合方法: mean, median, first"),
+    currency: str = Query("USD", description="通貨: USD または JPY")
 ):
     try:
         result = svc.get_consolidated_correlation(
             tickers, 
             method=method,
             correlation_threshold=correlation_threshold,
-            consolidation_method=consolidation_method
+            consolidation_method=consolidation_method,
+            currency=currency
         )
         original_heatmap_safe = json.loads(json.dumps(result["original_heatmap"], default=str))
         consolidated_heatmap_safe = json.loads(json.dumps(result["consolidated_heatmap"], default=str))
@@ -299,13 +349,15 @@ async def get_consolidated_correlation_html(
     tickers: Optional[List[str]] = Query(None),
     method: str = Query("simple"),
     correlation_threshold: float = Query(0.9),
-    consolidation_method: str = Query("mean")
+    consolidation_method: str = Query("mean"),
+    currency: str = Query("USD", description="通貨: USD または JPY")
 ):
     result = svc.get_consolidated_correlation(
         tickers, 
         method=method,
         correlation_threshold=correlation_threshold,
-        consolidation_method=consolidation_method
+        consolidation_method=consolidation_method,
+        currency=currency
     )
     
     # 統合前後のヒートマップを並べて表示

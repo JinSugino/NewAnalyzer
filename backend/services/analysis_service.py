@@ -25,18 +25,41 @@ class AnalysisService:
     def _filename_to_ticker(self, filename: str) -> str:
         return filename.replace(".csv", "")
 
-    def load_close_series(self, filename: str) -> pd.Series:
-        df = self.chart_service.load_csv_data(filename)
+    def load_close_series(self, filename: str, currency: str = "USD") -> pd.Series:
+        # 通貨換算サービスを使用してデータを読み込み
+        from services.currency_service import CurrencyService
+        currency_service = CurrencyService()
+        
+        # 分析用ファイルパスを取得
+        analysis_file_path = currency_service.get_analysis_file_path(filename, currency)
+        
+        # データを読み込み
+        df = pd.read_csv(analysis_file_path)
+        
+        # 特殊なCSV構造に対応（最初の2行をスキップしてDateカラムを設定）
+        if 'Date' not in df.columns and len(df.columns) >= 6:
+            # 3行目以降のデータを使用し、最初の列をDateとして設定
+            df = df.iloc[2:].reset_index(drop=True)
+            df.columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+            
+            # 空のDate行を削除
+            df = df.dropna(subset=['Date'])
+            df = df[df['Date'] != '']
+            
+            # 数値列を数値型に変換
+            for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        
         s = df.set_index("Date")["Close"].sort_index().astype(float)
         s.name = self._filename_to_ticker(filename)
         return s
 
-    def load_all_close_series(self, filenames: Optional[List[str]] = None) -> pd.DataFrame:
+    def load_all_close_series(self, filenames: Optional[List[str]] = None, currency: str = "USD") -> pd.DataFrame:
         files = filenames if filenames else self.list_csv_files()
         series_list: List[pd.Series] = []
         for f in files:
             try:
-                series_list.append(self.load_close_series(f))
+                series_list.append(self.load_close_series(f, currency))
             except Exception:
                 # 壊れたファイルはスキップ
                 continue
@@ -60,8 +83,9 @@ class AnalysisService:
         risk_free_rate: float = 0.0,
         periods_per_year: int = 252,
         method: str = "simple",
+        currency: str = "USD",
     ) -> pd.DataFrame:
-        prices = self.load_all_close_series(filenames)
+        prices = self.load_all_close_series(filenames, currency)
         rets = self.compute_returns(prices, method=method)
 
         # 日次統計
@@ -90,8 +114,8 @@ class AnalysisService:
         summary = summary.sort_values("sharpe_annual", ascending=False).reset_index(drop=True)
         return summary
 
-    def compute_correlation(self, filenames: Optional[List[str]] = None, method: str = "simple") -> pd.DataFrame:
-        prices = self.load_all_close_series(filenames)
+    def compute_correlation(self, filenames: Optional[List[str]] = None, method: str = "simple", currency: str = "USD") -> pd.DataFrame:
+        prices = self.load_all_close_series(filenames, currency)
         rets = self.compute_returns(prices, method=method)
         corr = rets.corr()
         return corr
@@ -162,10 +186,11 @@ class AnalysisService:
         filenames: Optional[List[str]] = None, 
         method: str = "simple",
         correlation_threshold: float = 0.9,
-        consolidation_method: str = "mean"
+        consolidation_method: str = "mean",
+        currency: str = "USD"
     ) -> Dict:
         """相関の高い資産グループを代表資産に統合"""
-        prices = self.load_all_close_series(filenames)
+        prices = self.load_all_close_series(filenames, currency)
         rets = self.compute_returns(prices, method=method)
         corr = rets.corr()
         
@@ -255,21 +280,21 @@ class AnalysisService:
         return fig.to_dict()
 
     # ---------- 高レベルAPI ----------
-    def get_summary(self, tickers: Optional[List[str]] = None, risk_free_rate: float = 0.0, periods_per_year: int = 252, method: str = "simple") -> Dict:
+    def get_summary(self, tickers: Optional[List[str]] = None, risk_free_rate: float = 0.0, periods_per_year: int = 252, method: str = "simple", currency: str = "USD") -> Dict:
         filenames = None
         if tickers:
             all_files = self.list_csv_files()
             filenames = [f for f in all_files if self._filename_to_ticker(f) in set(tickers)]
-        summary_df = self.compute_summary(filenames, risk_free_rate=risk_free_rate, periods_per_year=periods_per_year, method=method)
+        summary_df = self.compute_summary(filenames, risk_free_rate=risk_free_rate, periods_per_year=periods_per_year, method=method, currency=currency)
         table_fig = self.create_summary_table_figure(summary_df)
         return {"summary": summary_df.to_dict(orient="records"), "table": table_fig}
 
-    def get_correlation(self, tickers: Optional[List[str]] = None, method: str = "simple") -> Dict:
+    def get_correlation(self, tickers: Optional[List[str]] = None, method: str = "simple", currency: str = "USD") -> Dict:
         filenames = None
         if tickers:
             all_files = self.list_csv_files()
             filenames = [f for f in all_files if self._filename_to_ticker(f) in set(tickers)]
-        corr_df = self.compute_correlation(filenames, method=method)
+        corr_df = self.compute_correlation(filenames, method=method, currency=currency)
         heatmap_fig = self.create_correlation_heatmap_figure(corr_df)
         return {"matrix": corr_df.round(4).to_dict(), "heatmap": heatmap_fig}
 
@@ -278,7 +303,8 @@ class AnalysisService:
         tickers: Optional[List[str]] = None, 
         method: str = "simple",
         correlation_threshold: float = 0.9,
-        consolidation_method: str = "mean"
+        consolidation_method: str = "mean",
+        currency: str = "USD"
     ) -> Dict:
         """相関の高い資産を統合した相関分析"""
         filenames = None
@@ -290,7 +316,8 @@ class AnalysisService:
             filenames, 
             method=method,
             correlation_threshold=correlation_threshold,
-            consolidation_method=consolidation_method
+            consolidation_method=consolidation_method,
+            currency=currency
         )
         
         # 統合前後のヒートマップを作成

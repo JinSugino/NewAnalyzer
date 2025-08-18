@@ -308,11 +308,37 @@ class ChartService:
         merged = {**defaults, **(indicator_options or {})}
         return self._build_chart(df, title, annotate_dates=annotate_dates, mark_month_start=mark_month_start, axis_tick=axis_tick, axis_tick_format=axis_tick_format, axis_tick_dates=axis_tick_dates, **merged)
     
-    def get_chart_data(self, filename: str, with_indicators: bool = False, *, annotate_dates: Optional[List[str]] = None, mark_month_start: bool = False, axis_tick: str = "auto", axis_tick_format: Optional[str] = None, axis_tick_dates: Optional[List[str]] = None, **indicator_options) -> Dict[str, Any]:
+    def get_chart_data(self, filename: str, with_indicators: bool = False, currency: str = "USD", *, annotate_dates: Optional[List[str]] = None, mark_month_start: bool = False, axis_tick: str = "auto", axis_tick_format: Optional[str] = None, axis_tick_dates: Optional[List[str]] = None, **indicator_options) -> Dict[str, Any]:
         try:
-            df = self.load_csv_data(filename)
+            # 通貨換算サービスを使用してデータを読み込み
+            from services.currency_service import CurrencyService
+            currency_service = CurrencyService()
+            
+            # 分析用ファイルパスを取得
+            analysis_file_path = currency_service.get_analysis_file_path(filename, currency)
+            
+            # データを読み込み
+            df = pd.read_csv(analysis_file_path)
+            
+            # 特殊なCSV構造に対応（最初の2行をスキップしてDateカラムを設定）
+            if 'Date' not in df.columns and len(df.columns) >= 6:
+                # 3行目以降のデータを使用し、最初の列をDateとして設定
+                df = df.iloc[2:].reset_index(drop=True)
+                df.columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+                
+                # 空のDate行を削除
+                df = df.dropna(subset=['Date'])
+                df = df[df['Date'] != '']
+                
+                # 数値列を数値型に変換
+                for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            df['Date'] = pd.to_datetime(df['Date'])
+            df = df.sort_values('Date').reset_index(drop=True)
+            
             ticker = filename.replace('.csv', '')
-            title = f"{ticker} ローソク足チャート"
+            title = f"{ticker} ローソク足チャート ({currency})"
             if with_indicators:
                 chart_data = self.create_chart_with_indicators(
                     df, title, annotate_dates=annotate_dates, mark_month_start=mark_month_start, axis_tick=axis_tick, axis_tick_format=axis_tick_format, axis_tick_dates=axis_tick_dates, **indicator_options

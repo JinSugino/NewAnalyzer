@@ -1,0 +1,43 @@
+{
+  "ticker": "7203",
+  "currency": "JPY",
+  "with_indicators": false,
+  "data": {
+    "dates": [
+      "2020-01-01",
+      "2020-01-02",
+      "2020-01-03"
+    ],
+    "open": [
+      15000.0,
+      15150.0,
+      15300.0
+    ],
+    "high": [
+      15300.0,
+      15450.0,
+      15600.0
+    ],
+    "low": [
+      14850.0,
+      15000.0,
+      15150.0
+    ],
+    "close": [
+      15150.0,
+      15300.0,
+      15450.0
+    ],
+    "volume": [
+      1000000,
+      1100000,
+      1200000
+    ]
+  },
+  "indicators": null,
+  "metadata": {
+    "currency_converted": true,
+    "exchange_rate_used": 150.0,
+    "data_source": "data"
+  }
+}
